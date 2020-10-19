@@ -1,0 +1,12 @@
+name: Citi-Bike-availability
+title: Citi-Bike-availability
+username:
+account: jmarlo
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3052465
+bundleId: 3760159
+url: https://jmarlo.shinyapps.io/Citi-Bike-availability/
+when: 1603147015.66746
+asMultiple: FALSE
+asStatic: FALSE
