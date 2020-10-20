@@ -1,16 +1,23 @@
 
 server <- function(input, output, session) {
   
+  # get current highlighted marker and set default
+  current_marker <- reactive({
+    event <- input$map_marker_click
+    if (is.null(event)){
+      event <- list(id = default_station)
+    }
+    return(event)
+  })
   
   # When map is clicked, show a popup with city info
   observe({
     
-    event <- input$map_marker_click
-    if (is.null(event)){
-      event <- list(id = 3367)
-    }
+    event <- current_marker()
     
     isolate({
+      
+      # head info
       output$marker_text <- renderText(paste0("<h3>Status of station: ", lat_long_df$name[lat_long_df$station_id == event$id], "</h3>"))
       
       # output$table_station_status <-  renderTable(
@@ -22,6 +29,7 @@ server <- function(input, output, session) {
       #   rownames = TRUE
       # )
       
+      # top plot
       output$plot_station <- renderPlot(
         station_status %>% 
           filter(station_id == event$id) %>% 
@@ -45,6 +53,7 @@ server <- function(input, output, session) {
                y = NULL)
       )
       
+      # bottom plot
       output$plot_historical <- renderPlot(
         last_24 %>% 
           filter(station_id == event$id) %>% 
@@ -54,6 +63,7 @@ server <- function(input, output, session) {
           ggplot(aes(x = datetime, y = value, group = name, color = name)) +
           geom_line() +
           geom_point() +
+          scale_x_datetime(date_breaks = "1 hour", date_labels = "%I:%M %p") +
           scale_y_continuous(labels = scales::comma_format(accuracy = 1)) +
           labs(title = "Historical and projected for this station",
                x = NULL,
@@ -65,11 +75,33 @@ server <- function(input, output, session) {
     })
   })
   
-  output$map <- renderLeaflet({
-    leaflet() %>%
-      addProviderTiles(providers$Stamen.TonerLite,
-                       options = providerTileOptions(noWrap = TRUE)
-      ) %>%
-      addMarkers(lng = lat_long_df$long, lat = lat_long_df$lat, layerId = lat_long_df$station_id)
+  # function to highlight color of selected marker
+  get_marker_colors <- reactive({
+    sapply(lat_long_df$station_id, function(id){
+      if_else(id == current_marker()$id,
+              "black",
+              "lightgray")
+    }) %>% as.vector()
+  })
+  
+  # custom icons
+  # https://rstudio.github.io/leaflet/markers.html
+  icons <- reactive({
+    awesomeIcons(
+      icon = 'bicycle',
+      iconColor = '#f5f5f5',
+      library = 'fa',
+      markerColor = get_marker_colors()
+    )
+  })
+  
+  
+  # build the map
+  output$map <- renderLeaflet(base_map)
+  
+  observeEvent(current_marker(), {
+    leafletProxy("map", session) %>%
+      addAwesomeMarkers(lng = lat_long_df$long, lat = lat_long_df$lat, 
+                        layerId = lat_long_df$station_id, icon = icons())
   })
 }

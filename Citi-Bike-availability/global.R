@@ -4,6 +4,7 @@ library(tidyverse)
 library(xgboost)
 Sys.setenv(TZ = 'America/New_York')
 
+
 # data --------------------------------------------------------------------
 
 # read in latest json 
@@ -30,11 +31,9 @@ last_24 <- read_csv(
   "https://www.dropbox.com/s/pt7i2q0wxqwuctf/last_24.csv?dl=1",
   col_types = cols(
     station_id = col_character(),
-    station_status = col_character(),
     num_bikes_available = col_double(),
     num_docks_available = col_double(),
-    datetime = col_datetime(format = ""),
-    Hour = col_double()
+    datetime = col_datetime(format = "")
   ),
   locale = locale(tz = "America/New_York")
 )
@@ -44,4 +43,20 @@ last_24 <- read_csv(
 
 # load xgb model
 load("Data/xgb_trip_starts.RData")
+
+
+# other -------------------------------------------------------------------
+
+default_station <- 3367
+
+# map ---------------------------------------------------------------------
+
+# create base map
+base_map <- leaflet() %>%
+  addProviderTiles(providers$Esri.WorldGrayCanvas,
+                   options = providerTileOptions(noWrap = TRUE)) %>% 
+  setView(lng = lat_long_df$long[lat_long_df$station_id == default_station],
+          lat = lat_long_df$lat[lat_long_df$station_id == default_station],
+          zoom = 14)
+
 

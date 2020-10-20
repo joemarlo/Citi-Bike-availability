@@ -7,11 +7,11 @@ old_data <- read_csv(
   "https://www.dropbox.com/s/pt7i2q0wxqwuctf/last_24.csv?dl=1",
   col_types = cols(
     station_id = col_character(),
-    station_status = col_character(),
-    num_bikes_available = col_double(),
-    num_docks_available = col_double(),
-    datetime = col_datetime(format = ""),
-    Hour = col_double()
+    # station_status = col_character(),
+    num_bikes_available = col_integer(),
+    num_docks_available = col_integer(),
+    datetime = col_datetime(format = "")
+    # Hour = col_double()
   ),
   locale = locale(tz = "America/New_York")
 )
@@ -26,10 +26,9 @@ station_status <- bind_rows(station_status$data$stations)
 
 # latest data
 data_to_append <- station_status %>% 
-  select(station_id, station_status, num_bikes_available, num_docks_available) %>% 
+  select(station_id, num_bikes_available, num_docks_available) %>% 
   distinct() %>% 
-  mutate(datetime = datetime,
-         Hour = lubridate::hour(datetime))
+  mutate(datetime = datetime)
 
 # combine, delete old observations, and write out
 old_data %>% 
