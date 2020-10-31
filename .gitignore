@@ -1,3 +1,6 @@
+creds_master.R
+manage_DB.R
+
 # History files
 .Rhistory
 .Rapp.history

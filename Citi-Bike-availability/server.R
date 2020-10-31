@@ -1,6 +1,26 @@
 
 server <- function(input, output, session) {
   
+  # get current bikes available for each station
+  current_bikes_available <- reactive({
+    df <- conn %>%
+      tbl("last_12") %>%
+      group_by(station_id) %>%
+      filter(datetime == max(datetime, na.rm = TRUE)) %>%
+      ungroup() %>% 
+      select(station_id, num_bikes_available, num_docks_available) %>%
+      mutate(health = pmax(-3, pmin(3, log(num_bikes_available / num_docks_available)))) %>% 
+      collect()
+    
+    # sort them so order matches lat_long_df
+    df <- df[order(match(
+      df$station_id,
+      lat_long_df$station_id
+    )),]
+    
+    return(df)
+  })
+  
   # get current highlighted marker and set default
   current_marker <- reactive({
     event <- input$map_marker_click
@@ -9,116 +29,145 @@ server <- function(input, output, session) {
     }
     return(event)
   })
-  
+
   # When map is clicked, show a popup with city info
   observe({
     
-    event <- current_marker()
+    selected_station_id <- as.character(current_marker()$id)
     
     isolate({
       
       # head info
-      output$marker_text <- renderText(paste0("<h3>Status of station: ", lat_long_df$name[lat_long_df$station_id == event$id], "</h3>"))
+      output$marker_text <- renderText(paste0("<h3>Historical and projected for ", lat_long_df$name[lat_long_df$station_id == selected_station_id], "</h3>"))
       
-      # output$table_station_status <-  renderTable(
-      #   # return table of current station status
-      #   station_status %>% 
-      #     filter(station_id == event$id) %>% 
-      #     select(station_status, num_bikes_available, is_renting, is_returning) %>% 
-      #     t(),
-      #   rownames = TRUE
-      # )
-      
-      # top plot
-      output$plot_station <- renderPlot(
-        station_status %>% 
-          filter(station_id == event$id) %>% 
-          mutate(Trip_start_prediction = predict_trip_starts(
-            station_id,
-            lag_one_hour = last_24 %>% 
-              filter(station_id == event$id) %>% 
-              arrange(desc(datetime)) %>% 
-              mutate(bike_delta = num_bikes_available - lead(num_bikes_available)) %>% 
-              head(n = 1) %>%
-              pull(bike_delta),
-            lag_three_hour_median = 5,
-            datetime = datetime
-          )) %>% 
-          select("Bikes currently available" = num_bikes_available, 
-                 'Prediction of trips starting in next hour' = Trip_start_prediction) %>% 
-          pivot_longer(cols = everything()) %>% 
-          ggplot(aes(x = name, y = value)) +
-          geom_col() +
-          scale_y_continuous(labels = scales::comma_format(accuracy = 1)) +
-          labs(title = "Summary stats for this station",
-               x = NULL,
-               y = NULL)
-      )
-      
-      # bottom plot
-      output$plot_historical <- renderPlot({
+      # plot
+      output$plot_historical <- renderPlotly({
+
+        # get the data and add predictions
+        station_data <- conn %>% 
+          tbl("last_12")  %>%
+          filter(station_id == selected_station_id) %>% 
+          collect() %>% 
+          mutate(datetime = lubridate::as_datetime(datetime, tz = 'America/New_York')) %>% 
+          add_preds(id = selected_station_id, n_prediction_periods = 1)
+        
         # build plot data first so we can seperate line types later
-        p <- last_24 %>% 
-          add_preds(id = event$id, n_prediction_periods = 3) %>% 
+        p <- station_data %>%
           rename('Bikes available' = num_bikes_available,
-                 'Docks available' = num_docks_available) %>% 
+                 'Docks available' = num_docks_available) %>%
           pivot_longer(cols = c("Bikes available", "Docks available")) %>% 
           ggplot(aes(x = datetime, y = value, group = name, color = name)) +
           geom_line()
         
+        # stop here if issue building the base plot (most likely cause by
+        #   lack of data)
+        validate(need(is.ggplot(p),
+                      "Data currently not available"))
+
         # pull out plot data
         p_data <- ggplot_build(p)$data[[1]]
-        
+
         # convert time back to datetime
         p_data$x <- lubridate::as_datetime(p_data$x, tz = 'America/New_York')
+
+        # get datetime of last observed data (= 1 + n_prediction_periods)
+        datetime <- sort(station_data$datetime, decreasing = TRUE)[2]
         
         # build final plot
-        ggplot(p_data[p_data$x <= datetime, ], aes(x=x, y=y, color=as.factor(group), group=group)) +
+        p <- ggplot(p_data[p_data$x <= datetime, ],
+               aes(x = x, y = y, color = as.factor(group), 
+                   group = group, text = paste0(strftime(x, format = "%I:%M %p"), ":  ", y, ' units'))) +
           geom_line() +
           geom_point() +
-          geom_line(data=p_data[p_data$x >= datetime - as.difftime(1, unit = 'hours'), ], linetype="dashed") +
-          geom_point(data=p_data[p_data$x >= datetime - as.difftime(1, unit = 'hours'), ]) +
+          geom_line(data = p_data[p_data$x >= datetime - as.difftime(1, unit = 'hours'), ],
+                    linetype = "dashed") +
+          geom_point(data = p_data[p_data$x >= datetime - as.difftime(1, unit = 'hours'), ]) +
           scale_x_datetime(date_breaks = "1 hour", date_labels = "%I:%M %p") +
           scale_y_continuous(labels = scales::comma_format(accuracy = 1)) +
           scale_color_discrete(labels = c("Bikes available", "Docks available")) +
-          labs(title = "Historical and projected for this station",
-               x = NULL,
+          labs(x = NULL,
                y = NULL,
-               color = NULL) +
-          theme(legend.position = 'bottom')
+               color = NULL)
+        
+        # convert to plotly
+        fig <- ggplotly(p, dynamicTicks = TRUE, tooltip = c("text")) %>%
+          # rangeslider(datetime - as.difftime(3, unit = 'hours')) %>%
+          layout(legend = list(
+            orientation = "h",
+            xanchor = "center",
+            x = 0.5,
+            y = 1.1
+          )) %>%
+          style(hoverlabel = list(bordercolor = "white")) %>%
+          config(displayModeBar = FALSE)
+        
+        # rename legend
+        fig <- plotly_build(fig)
+        fig$x$data[[1]]$name <- "Bikes available"
+        fig$x$data[[2]]$name <- "Docks available"
+        
+        return(fig)
       })
       
     })
   })
   
   # function to highlight color of selected marker
-  get_marker_colors <- reactive({
-    sapply(lat_long_df$station_id, function(id){
-      if_else(id == current_marker()$id,
-              "black",
-              "lightgray")
-    }) %>% as.vector()
-  })
+  # get_marker_colors <- reactive({
+  #   sapply(lat_long_df$station_id, function(id){
+  #     if_else(id == current_marker()$id,
+  #             "black",
+  #             "lightgray")
+  #   }) %>% as.vector()
+  # })
   
   # custom icons
   # https://rstudio.github.io/leaflet/markers.html
-  icons <- reactive({
-    awesomeIcons(
-      icon = 'bicycle',
-      iconColor = '#f5f5f5',
-      library = 'fa',
-      markerColor = get_marker_colors()
+  # icons <- reactive({
+  #   awesomeIcons(
+  #     icon = 'bicycle',
+  #     iconColor = '#f5f5f5',
+  #     library = 'fa',
+  #     markerColor = get_marker_colors()
+  #   )
+  # })
+  
+  # function to determine circle colors and highlight color of selected marker
+  circle_colors <- reactive({
+    
+    # map user input to data column
+    metric <- switch(
+      input$color,
+      "Health (ratio of bikes to docks)" = scale_11(current_bikes_available()$health), 
+      "Bikes available" = scale_11(current_bikes_available()$num_bikes_available), 
+      "Docks available" = scale_11(current_bikes_available()$num_docks_available)
     )
-  })
+
+    # set colors based on user input
+    colors <- colorNumeric(palette = c("#eb6060",'#f7e463', "#7cd992", '#f2e061', "#eb5e5e"), domain = c(-1, 1))(metric)
+  
+    # replace selected station with color gray
+    colors[lat_long_df$station_id == current_marker()$id] <- "#2b2b2b"
+    
+    # replace NAs with red
+    colors[is.na(metric)] <- "#eb6060"
+    
+    return(colors)
+    })
   
   
   # build the map
   output$map <- renderLeaflet(base_map)
   
   # edit the map
-  observeEvent(current_marker(), {
+  observe({
     leafletProxy("map", session) %>%
-      addAwesomeMarkers(lng = lat_long_df$long, lat = lat_long_df$lat, 
-                        layerId = lat_long_df$station_id, icon = icons())
+      # addAwesomeMarkers(lng = lat_long_df$long, lat = lat_long_df$lat, 
+      #                   layerId = lat_long_df$station_id, icon = icons())
+    addCircleMarkers(lng = lat_long_df$long, lat = lat_long_df$lat, 
+                     layerId = lat_long_df$station_id, radius = 8,
+                     stroke = FALSE, fillOpacity = 0.8, 
+                     color = circle_colors(),
+                     label = lat_long_df$name)
   })
 }

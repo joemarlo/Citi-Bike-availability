@@ -32,7 +32,6 @@ trip_counts <- master_df %>%
 
 # data prep ---------------------------------------------------------------
 
-
 # data prep
 # convert implicit NAs to explicit
 # add lag of n for each station
@@ -76,8 +75,8 @@ X_test <- X[!(1:nrow(X) %in% train_indices),]
 
 # library(xgboost)  
 xgb <- xgboost::xgboost(data = as.matrix(X_train), # training data as matrix
-                        label = trip_counts_train$n,  #  outcomes
-                        nrounds = 100,       # number of trees to build
+                        label = trip_counts_train$n,  # outcomes
+                        nrounds = 25,  # number of trees to build; keep it small for fast load time
                         objective = "count:poisson", 
                         # eta = 0.3,
                         depth = 10,
@@ -128,7 +127,11 @@ pred_sim_1 %>%
 
 # data prep 
 xgb_trip_starts <- xgb
-save(xgb_trip_starts, file = "~/Desktop/Citi-Bike-traffic/xgb_trip_starts.RData")
+# save(xgb_trip_starts, file = "~/Desktop/Citi-Bike-traffic/xgb_trip_starts.RData")
+setwd("~/Dropbox/Data/Projects/Citi-Bike-availability/Citi-Bike-availability/Data/")
+xgboost::xgb.save(xgb, "xgb_trip_starts.model")
+setwd("/home/joemarlo/Dropbox/Data/Projects/NYC-data")
+
 
 predict_trip_starts <- function(station_id){
 

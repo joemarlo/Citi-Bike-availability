@@ -3,61 +3,69 @@ library(leaflet)
 library(tidyverse)
 library(xgboost)
 library(zoo)
+library(plotly)
 Sys.setenv(TZ = 'America/New_York')
+
+
+# connect to database
+conn <- pool::dbPool(
+  RMySQL::MySQL(), 
+  host = "citi-bike.cjcvdlibs3rm.us-east-1.rds.amazonaws.com",
+  dbname = "citi_bike",
+  username = "guest",
+  password = "guest"
+)
 
 
 # data --------------------------------------------------------------------
 
-# read in latest json 
-snapshot <- jsonlite::read_json("http://gbfs.citibikenyc.com/gbfs/gbfs.json")
+# read lat long table
+lat_long_df <- conn %>% 
+  tbl("lat_long") %>% 
+  collect()
 
-# read in station info
-station_details <- jsonlite::read_json(snapshot$data$en$feeds[[2]]$url)
+# get latest date
+datetime <- conn %>% 
+  tbl("last_12") %>%
+  summarize(max(datetime)) %>% 
+  pull() %>% 
+  lubridate::as_datetime(., tz = Sys.timezone())
 
-# make lat long table
-lat_long_df <- map_dfr(station_details$data$stations, function(tbl){
-  tibble(station_id = tbl$station_id, lat = tbl$lat, long = tbl$lon, name = tbl$name)
-}) 
-
-# station status
-station_status <- jsonlite::read_json(snapshot$data$en$feeds[[3]]$url)
-datetime <- lubridate::as_datetime(station_status$last_updated, tz = Sys.timezone())
+# create timestamp objects for add_preds()
 month <- lubridate::month(datetime)
 hour <- lubridate::hour(datetime)
 weekday <- lubridate::wday(datetime)
-station_status <- bind_rows(station_status$data$stations)
-
-# read in last 12 hours of data
-last_24 <- read_csv(
-  "https://www.dropbox.com/s/pt7i2q0wxqwuctf/last_24.csv?dl=1",
-  col_types = cols(
-    station_id = col_character(),
-    num_bikes_available = col_double(),
-    num_docks_available = col_double(),
-    datetime = col_datetime(format = "")
-  ),
-  locale = locale(tz = "America/New_York")
-)
 
 
 # modeling ----------------------------------------------------------------
 
 # load xgb model
-load("Data/xgb_trip_starts.RData")
-
+# load("Data/xgb_trip_starts.RData")
+xgb_trip_starts <- xgboost::xgb.load("Data/xgb_trip_starts.model")
 
 # other -------------------------------------------------------------------
 
 default_station <- 3367
 
+scale_11 <- function(vec){
+  # scale between -1:1 while keeping NAs
+  omited_vec <- as.vector(na.omit(vec))
+  new_values <- ((omited_vec - min(omited_vec)) / (max(omited_vec) - min(omited_vec))) * 2 - 1
+  vec[!is.na(vec)] <- new_values
+  return(vec)
+}
+
 # map ---------------------------------------------------------------------
 
 # create base map
 base_map <- leaflet() %>%
-  addProviderTiles(providers$Esri.WorldGrayCanvas,
-                   options = providerTileOptions(noWrap = TRUE)) %>% 
+  addProviderTiles(providers$CartoDB.Positron, #Jawg.Light #Stamen.TonerLite CartoDB.Positron
+                   options = providerTileOptions(noWrap = TRUE,
+                                                 minZoom = 11)) %>% 
   setView(lng = lat_long_df$long[lat_long_df$station_id == default_station],
           lat = lat_long_df$lat[lat_long_df$station_id == default_station],
-          zoom = 14)
-
-
+          zoom = 14) %>% 
+  setMaxBounds(lng1 = 1.0001 * min(lat_long_df$long),
+               lat1 = 0.9999 * min(lat_long_df$lat),
+               lng2 = 0.9999 * max(lat_long_df$long),
+               lat2 = 1.0001 * max(lat_long_df$lat))

@@ -22,20 +22,27 @@ predict_trip_starts <- function(station_id, lag_one_hour, lag_three_hour_median,
 # need a prep data function for intake into predict_trip_starts()
 
 # this does not account for bikes returning
+# does not account for station dock size
 
 add_preds <- function(data, id, n_prediction_periods = 3) {
   # function iteratively adds rows to the dataframe by predicting the next outcome
   # rows are added in one hour intervals
   
   # filter dataframe to just the station and calculate current stats
+  # ISSUE HERE WITH PREDS for current vs. last hour. Shouldn't need to call predict
+  # here + causes performance issues
   df <- data %>% 
     filter(station_id == id) %>% 
     mutate(trips_started = pmax(0, lag(num_bikes_available) - num_bikes_available),
            lag_one_hour = zoo::rollsum(trips_started, 4, align = 'right', fill = NA),
            lag_three_hour_median = ceiling(zoo::rollsum(trips_started, 12, align = 'right', fill = NA) / 3)) %>% 
-    rowwise() %>% 
-    mutate(pred_one_hour = predict_trip_starts(station_id, lag_one_hour, lag_three_hour_median, datetime)) %>% 
-    ungroup()
+    mutate(pred_one_hour = lag_one_hour) 
+    # rowwise() %>%
+    # mutate(pred_one_hour = ifelse(
+    #   row_number() == max(row_number()),
+    #   predict_trip_starts(station_id, lag_one_hour, lag_three_hour_median, datetime),
+    #   NA)) %>%
+    # ungroup() %>% 
   
   # set lag for rollsum per i
   window <- c(9, 6, rep(3, max(0, n_prediction_periods - 2)))[1:n_prediction_periods]

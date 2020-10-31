@@ -1,21 +1,16 @@
 # this script is part of a cron job executed every 15 minutes
 library(tidyverse)
+library(pool)
+setwd('~/Dropbox/Data/Projects/Citi-Bike-availability')
+source("creds_master.R")
 Sys.setenv(TZ = 'America/New_York')
 
-# read current file in from dropbox server
-old_data <- read_csv(
-  "https://www.dropbox.com/s/pt7i2q0wxqwuctf/last_24.csv?dl=1",
-  col_types = cols(
-    station_id = col_character(),
-    # station_status = col_character(),
-    num_bikes_available = col_integer(),
-    num_docks_available = col_integer(),
-    datetime = col_datetime(format = "")
-    # Hour = col_double()
-  ),
-  locale = locale(tz = "America/New_York")
-)
-
+# read in old data from server
+old_data <- conn %>% 
+  tbl("last_12") %>%
+  collect() %>% 
+  mutate(datetime = lubridate::as_datetime(datetime, tz = 'America/New_York'))
+  
 # read in latest json 
 latest_json <- jsonlite::read_json("http://gbfs.citibikenyc.com/gbfs/gbfs.json")
 
@@ -31,10 +26,19 @@ data_to_append <- station_status %>%
   mutate(datetime = datetime)
 
 # combine, delete old observations, and write out
-old_data %>% 
+new_data <- old_data %>% 
   bind_rows(data_to_append) %>%  
   distinct() %>% 
-  filter(datetime >= Sys.time() - as.difftime(3, unit = 'hours')) %>% 
-  write_csv("~/Dropbox/Data/Projects/Citi-Bike-availability/last_24.csv")
+  filter(datetime >= Sys.time() - as.difftime(12, unit = 'hours'))
 
-rm(data_to_append, latest_json, old_data, station_status, datetime)
+# TODO add predictions
+
+
+# write out to the database
+dbWriteTable(
+  conn = conn,
+  name = 'last_12',
+  value = new_data,
+  overwrite = TRUE,
+  row.names = FALSE
+)

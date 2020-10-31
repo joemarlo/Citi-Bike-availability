@@ -1,0 +1,58 @@
+/* most of this CSS overrides the default bootstrap*/
+
+body {
+  padding: 5px 20px 20px 5px;
+  font-family: "Roboto", Helvetica, Arial, sans-serif;
+  color: #636363;
+  font-weight: 350;
+}
+
+/* headers */
+h1, h2, h3, h4, h5, h6 {
+  color: #525252;
+  font-weight: 500;
+}
+
+/* links */
+a {
+  color: #5c5980;
+  text-decoration: none;
+}
+
+/* horizontal line */
+hr {
+  border-top: 1px solid #fff
+}
+
+.text-primary {
+  color: #5c5980;
+}
+
+.bg-primary {
+  color: #fff;
+  background-color: #5c5980;
+}
+
+#controls {
+  /* Appearance */
+  background-color: white;
+  padding: 0 20px 20px 20px;
+  cursor: move;
+  /* Fade out while not hovering */
+  opacity: 0.5;
+  zoom: 0.9;
+  transition: opacity 500ms 1s;
+}
+#controls:hover {
+  /* Fade in while hovering */
+  opacity: 0.95;
+  transition-delay: 0;
+}
+
+.leaflet-control-zoom, leaflet-bar, leaflet-control {
+    opacity: 0.5;
+}
+
+.leaflet-control-zoom:hover, leaflet-bar:hover, leaflet-control:hover {
+    opacity: 0.95;
+}
