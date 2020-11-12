@@ -1,4 +1,5 @@
 library(shiny)
+library(shinyWidgets)
 library(leaflet)
 library(tidyverse)
 library(xgboost)
@@ -9,12 +10,19 @@ Sys.setenv(TZ = 'America/New_York')
 
 # connect to database
 conn <- pool::dbPool(
-  RMySQL::MySQL(), 
-  host = "citi-bike.cjcvdlibs3rm.us-east-1.rds.amazonaws.com",
+  drv = RMySQL::MySQL(), 
+  # host = "citi-bike.cjcvdlibs3rm.us-east-1.rds.amazonaws.com",
+  host = 'citi-bike-server.mysql.database.azure.com',
   dbname = "citi_bike",
-  username = "guest",
+  # username = "guest",
+  username = "guest@citi-bike-server",
   password = "guest"
 )
+
+# disconnect from server when shiny stops
+onStop(function() {
+  pool::poolClose(conn)
+})
 
 
 # data --------------------------------------------------------------------
@@ -41,7 +49,7 @@ weekday <- lubridate::wday(datetime)
 
 # load xgb model
 # load("Data/xgb_trip_starts.RData")
-xgb_trip_starts <- xgboost::xgb.load("Data/xgb_trip_starts.model")
+# xgb_trip_starts <- xgboost::xgb.load("Data/xgb_trip_starts.model")
 
 # other -------------------------------------------------------------------
 
@@ -54,6 +62,7 @@ scale_11 <- function(vec){
   vec[!is.na(vec)] <- new_values
   return(vec)
 }
+
 
 # map ---------------------------------------------------------------------
 

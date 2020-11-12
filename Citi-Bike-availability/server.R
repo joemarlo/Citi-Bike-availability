@@ -1,13 +1,18 @@
 
 server <- function(input, output, session) {
   
+
   # get current bikes available for each station
   current_bikes_available <- reactive({
+    
+    # decide which timeframe to used based on user slider input
+    timediff <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
+    datetime_str <- as.character(datetime - as.difftime(timediff, unit = 'hours'))
+
+    # pull the data corresponding to the user input
     df <- conn %>%
       tbl("last_12") %>%
-      group_by(station_id) %>%
-      filter(datetime == max(datetime, na.rm = TRUE)) %>%
-      ungroup() %>% 
+      filter(datetime == datetime_str) %>% 
       select(station_id, num_bikes_available, num_docks_available) %>%
       mutate(health = pmax(-3, pmin(3, log(num_bikes_available / num_docks_available)))) %>% 
       collect()
@@ -48,8 +53,8 @@ server <- function(input, output, session) {
           tbl("last_12")  %>%
           filter(station_id == selected_station_id) %>% 
           collect() %>% 
-          mutate(datetime = lubridate::as_datetime(datetime, tz = 'America/New_York')) %>% 
-          add_preds(id = selected_station_id, n_prediction_periods = 1)
+          mutate(datetime = lubridate::as_datetime(datetime, tz = 'America/New_York'))# %>% 
+          #add_preds(id = selected_station_id, n_prediction_periods = 1)
         
         # build plot data first so we can seperate line types later
         p <- station_data %>%
@@ -71,7 +76,7 @@ server <- function(input, output, session) {
         p_data$x <- lubridate::as_datetime(p_data$x, tz = 'America/New_York')
 
         # get datetime of last observed data (= 1 + n_prediction_periods)
-        datetime <- sort(station_data$datetime, decreasing = TRUE)[2]
+        datetime <- sort(station_data$datetime, decreasing = TRUE)[4]
         
         # build final plot
         p <- ggplot(p_data[p_data$x <= datetime, ],
@@ -82,6 +87,11 @@ server <- function(input, output, session) {
           geom_line(data = p_data[p_data$x >= datetime - as.difftime(1, unit = 'hours'), ],
                     linetype = "dashed") +
           geom_point(data = p_data[p_data$x >= datetime - as.difftime(1, unit = 'hours'), ]) +
+          geom_vline(color = "grey50", alpha = 0.8,
+                     xintercept = {
+            timediff_vline <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
+            datetime - as.difftime(timediff_vline - 3, unit = 'hours')
+          }) +
           scale_x_datetime(date_breaks = "1 hour", date_labels = "%I:%M %p") +
           scale_y_continuous(labels = scales::comma_format(accuracy = 1)) +
           scale_color_discrete(labels = c("Bikes available", "Docks available")) +
@@ -112,26 +122,6 @@ server <- function(input, output, session) {
     })
   })
   
-  # function to highlight color of selected marker
-  # get_marker_colors <- reactive({
-  #   sapply(lat_long_df$station_id, function(id){
-  #     if_else(id == current_marker()$id,
-  #             "black",
-  #             "lightgray")
-  #   }) %>% as.vector()
-  # })
-  
-  # custom icons
-  # https://rstudio.github.io/leaflet/markers.html
-  # icons <- reactive({
-  #   awesomeIcons(
-  #     icon = 'bicycle',
-  #     iconColor = '#f5f5f5',
-  #     library = 'fa',
-  #     markerColor = get_marker_colors()
-  #   )
-  # })
-  
   # function to determine circle colors and highlight color of selected marker
   circle_colors <- reactive({
     
@@ -156,14 +146,12 @@ server <- function(input, output, session) {
     })
   
   
-  # build the map
+  # build the base map
   output$map <- renderLeaflet(base_map)
   
   # edit the map
   observe({
     leafletProxy("map", session) %>%
-      # addAwesomeMarkers(lng = lat_long_df$long, lat = lat_long_df$lat, 
-      #                   layerId = lat_long_df$station_id, icon = icons())
     addCircleMarkers(lng = lat_long_df$long, lat = lat_long_df$lat, 
                      layerId = lat_long_df$station_id, radius = 8,
                      stroke = FALSE, fillOpacity = 0.8, 
