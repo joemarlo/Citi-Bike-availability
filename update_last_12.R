@@ -37,9 +37,9 @@ new_data <- old_data %>%
 
 # TODO add predictions
 # load xgb model
-setwd("Citi-Bike-availability")
-xgb_trip_starts <- xgboost::xgb.load("Data/xgb_trip_starts.model")
-setwd("..")
+#setwd("Citi-Bike-availability")
+xgb_trip_starts <- xgboost::xgb.load("Modeling/xgb_trip_starts_R.model")
+#setwd("..")
 
 # split df by station
 stations_df <- new_data %>% 

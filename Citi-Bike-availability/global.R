@@ -32,24 +32,6 @@ lat_long_df <- conn %>%
   tbl("lat_long") %>% 
   collect()
 
-# get latest date
-datetime <- conn %>% 
-  tbl("last_12") %>%
-  summarize(max(datetime)) %>% 
-  pull() %>% 
-  lubridate::as_datetime(., tz = Sys.timezone())
-
-# create timestamp objects for add_preds()
-month <- lubridate::month(datetime)
-hour <- lubridate::hour(datetime)
-weekday <- lubridate::wday(datetime)
-
-
-# modeling ----------------------------------------------------------------
-
-# load xgb model
-# load("Data/xgb_trip_starts.RData")
-# xgb_trip_starts <- xgboost::xgb.load("Data/xgb_trip_starts.model")
 
 # other -------------------------------------------------------------------
 

@@ -1,9 +1,15 @@
 
 server <- function(input, output, session) {
   
-
   # get current bikes available for each station
   current_bikes_available <- reactive({
+    
+    # get latest date
+    datetime <- conn %>%
+        tbl("last_12") %>%
+        summarize(max(datetime)) %>%
+        pull() %>%
+        lubridate::as_datetime(., tz = Sys.timezone())
     
     # decide which timeframe to used based on user slider input
     timediff <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
@@ -53,8 +59,7 @@ server <- function(input, output, session) {
           tbl("last_12")  %>%
           filter(station_id == selected_station_id) %>% 
           collect() %>% 
-          mutate(datetime = lubridate::as_datetime(datetime, tz = 'America/New_York'))# %>% 
-          #add_preds(id = selected_station_id, n_prediction_periods = 1)
+          mutate(datetime = lubridate::as_datetime(datetime, tz = 'America/New_York'))
         
         # build plot data first so we can seperate line types later
         p <- station_data %>%
@@ -82,16 +87,20 @@ server <- function(input, output, session) {
         p <- ggplot(p_data[p_data$x <= datetime, ],
                aes(x = x, y = y, color = as.factor(group), 
                    group = group, text = paste0(strftime(x, format = "%I:%M %p"), ":  ", y, ' units'))) +
+          geom_vline(color = "grey50", alpha = 0.8, linetype = 'dash',
+                     xintercept = {
+                       timediff_vline <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
+                       datetime - as.difftime(timediff_vline - 3, unit = 'hours')
+                     }) +
           geom_line() +
           geom_point() +
-          geom_line(data = p_data[p_data$x >= datetime - as.difftime(1, unit = 'hours'), ],
+          # geom_ribbon(data = p_data[p_data$x >= datetime - as.difftime(10, unit = 'mins'), ],
+          #             aes(ymax = y + (1.5 * difftime(x, datetime, units = 'hours')), 
+          #                 ymin = y - (1.5 * difftime(x, datetime, units = 'hours'))),
+          #             fill = 'grey90', color = 'white', alpha = 0.8) +
+          geom_line(data = p_data[p_data$x > datetime - as.difftime(1, unit = 'hours'), ],
                     linetype = "dashed") +
-          geom_point(data = p_data[p_data$x >= datetime - as.difftime(1, unit = 'hours'), ]) +
-          geom_vline(color = "grey50", alpha = 0.8,
-                     xintercept = {
-            timediff_vline <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
-            datetime - as.difftime(timediff_vline - 3, unit = 'hours')
-          }) +
+          geom_point(data = p_data[p_data$x > datetime - as.difftime(1, unit = 'hours'), ]) +
           scale_x_datetime(date_breaks = "1 hour", date_labels = "%I:%M %p") +
           scale_y_continuous(labels = scales::comma_format(accuracy = 1)) +
           scale_color_discrete(labels = c("Bikes available", "Docks available")) +
@@ -101,20 +110,23 @@ server <- function(input, output, session) {
         
         # convert to plotly
         fig <- ggplotly(p, dynamicTicks = TRUE, tooltip = c("text")) %>%
-          # rangeslider(datetime - as.difftime(3, unit = 'hours')) %>%
-          layout(legend = list(
-            orientation = "h",
-            xanchor = "center",
-            x = 0.5,
-            y = 1.1
-          )) %>%
+          layout(
+            legend = list(
+              orientation = "h",
+              xanchor = "center",
+              x = 0.5,
+              y = 1.1
+            ),
+            xaxis = list(fixedrange = TRUE),
+            yaxis = list(fixedrange = TRUE)
+          ) %>%
           style(hoverlabel = list(bordercolor = "white")) %>%
           config(displayModeBar = FALSE)
         
         # rename legend
         fig <- plotly_build(fig)
-        fig$x$data[[1]]$name <- "Bikes available"
-        fig$x$data[[2]]$name <- "Docks available"
+        fig$x$data[[2]]$name <- "Bikes available"
+        fig$x$data[[3]]$name <- "Docks available"
         
         return(fig)
       })

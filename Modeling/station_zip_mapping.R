@@ -74,4 +74,4 @@ station_zip_mapping %>%
 
 # write out
 station_zip_mapping %>% 
-  write_csv("Citi-Bike-availability/Data/station_details.csv")
+  write_csv("Modeling/station_details.csv")
