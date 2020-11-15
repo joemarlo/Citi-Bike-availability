@@ -1,16 +1,14 @@
 import pandas as pd
 import numpy as np
 import os
-import gc
 import sqlite3
 import datetime as dt
-from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 os.chdir('/home/joemarlo/Dropbox/Data/Projects/NYC-data')
 
-# connect to database and extract ...
+# connect to database
 conn = sqlite3.connect('NYC.db')
 os.chdir('/home/joemarlo/Dropbox/Data/Projects/Citi-Bike-availability')
 
