@@ -6,6 +6,7 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# set directory
 os.chdir('/home/joemarlo/Dropbox/Data/Projects/NYC-data')
 
 # connect to database
@@ -69,8 +70,6 @@ trip_counts = trip_counts.merge(right_df, how='left', on=['datetime', 'station_i
 # add weekday back
 trip_counts['weekday'] = trip_counts['datetime'].dt.dayofweek.apply(lambda x: x in range(0, 6)) * 1
 del trip_counts['datetime'], trip_counts['date']
-
-# replace Nans
 
 # add in zip code group
 station_zip_mapping = pd.read_csv("Modeling/station_details.csv")[['station_id', 'zip_id']]

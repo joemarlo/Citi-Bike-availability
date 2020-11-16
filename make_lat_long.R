@@ -13,3 +13,5 @@ lat_long_df <- map_dfr(station_details$data$stations, function(tbl){
 # write table to DB
 DBI::dbWriteTable(conn = conn, name = 'lat_long', value = lat_long_df, overwrite = TRUE, row.names = FALSE)
 
+# close the connection
+DBI::dbDisconnect(conn)

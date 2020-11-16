@@ -12,7 +12,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import mean_squared_error as MSE
 from yellowbrick.regressor import ResidualsPlot
 
-
+# set directory
 os.chdir('/home/joemarlo/Dropbox/Data/Projects/Citi-Bike-availability')
 
 # set X and y matrices
@@ -39,6 +39,7 @@ preds = xg_reg.predict(X_test)
 
 # Compute the rmse
 MSE(y_test, preds)**(1/2)
+# = 2.94
 
 # boxplot of residuals
 ax = sns.boxplot(x=preds-y_test)
@@ -75,5 +76,5 @@ plt.show()
 xg_reg.save_model('Modeling/xgb_trip_starts_py.model')
 
 # load model
-#xg_reg = xgb.Booster({'nthread': 4})
-#xg_reg.load_model('Modeling/xgb_trip_starts_py.model')
+xg_reg = xgb.Booster({'nthread': 4})
+xg_reg.load_model('Modeling/xgb_trip_starts_py.model')

@@ -19,12 +19,12 @@ nyc_zip <- rgdal::readOGR(httr::content(nyc_geojson,'text'), 'OGRGeoJSON', verbo
 nyc_zip_df <- broom::tidy(nyc_zip)
 
 # map the shapefiles
-ggplot() +
-  geom_polygon(data = nyc_zip_df,
-               aes(x = long, y = lat, group = group, fill = id),
-               color = 'white') +
-  coord_quickmap() +
-  theme(legend.position = 'none')
+# ggplot() +
+#   geom_polygon(data = nyc_zip_df,
+#                aes(x = long, y = lat, group = group, fill = id),
+#                color = 'white') +
+#   coord_quickmap() +
+#   theme(legend.position = 'none')
 
 
 # which stations are in which zip -----------------------------------------
@@ -66,11 +66,11 @@ station_zip_mapping <- points_in_poly %>%
   replace_na(list(zip_id = '999'))
 
 # map of stations colored by zip
-station_zip_mapping %>% 
-  ggplot(aes(x = long, y = lat, color = zip_id)) +
-  geom_point() +
-  coord_quickmap() +
-  theme(legend.position = 'none')
+# station_zip_mapping %>% 
+#   ggplot(aes(x = long, y = lat, color = zip_id)) +
+#   geom_point() +
+#   coord_quickmap() +
+#   theme(legend.position = 'none')
 
 # write out
 station_zip_mapping %>% 

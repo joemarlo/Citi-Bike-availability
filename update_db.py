@@ -1,3 +1,5 @@
+# this runs as a cron job every 15min
+
 import pandas as pd
 import numpy as np
 import os
