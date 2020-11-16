@@ -25,7 +25,8 @@ ui <- fluidPage(
                                       choices = c("Health (ratio of bikes to docks)", "Bikes available", "Docks available")),
                          sliderTextInput(inputId = "timeframe",
                                          label = h4("Timeframe"),
-                                         choices = list("Now", "In one hour", "Two hours", "Three hours")
+                                         choices = list("Now", "In one hour")
+                                         # choices = list("Now", "In one hour", "Two hours", "Three hours")
                          )
                          # verbatimTextOutput(outputId = "result")
            ),

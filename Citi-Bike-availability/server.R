@@ -12,7 +12,8 @@ server <- function(input, output, session) {
         lubridate::as_datetime(., tz = Sys.timezone())
     
     # decide which timeframe to used based on user slider input
-    timediff <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
+    # timediff <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
+    timediff <- 2 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
     datetime_str <- as.character(datetime - as.difftime(timediff, unit = 'hours'))
 
     # pull the data corresponding to the user input
@@ -81,17 +82,23 @@ server <- function(input, output, session) {
         p_data$x <- lubridate::as_datetime(p_data$x, tz = 'America/New_York')
 
         # get datetime of last observed data (= 1 + n_prediction_periods)
-        datetime <- sort(station_data$datetime, decreasing = TRUE)[4]
+        # datetime <- sort(station_data$datetime, decreasing = TRUE)[4]
+        datetime <- sort(station_data$datetime, decreasing = TRUE)[2]
         
         # build final plot
         p <- ggplot(p_data[p_data$x <= datetime, ],
                aes(x = x, y = y, color = as.factor(group), 
                    group = group, text = paste0(strftime(x, format = "%I:%M %p"), ":  ", y, ' units'))) +
           geom_vline(color = "grey50", alpha = 0.8, linetype = 'dash',
+                     # xintercept = {
+                     #   timediff_vline <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
+                     #   datetime - as.difftime(timediff_vline - 3, unit = 'hours')
+                     # }
                      xintercept = {
-                       timediff_vline <- 4 - match(input$timeframe, list("Now", "In one hour", "Two hours", "Three hours"))
-                       datetime - as.difftime(timediff_vline - 3, unit = 'hours')
-                     }) +
+                       timediff_vline <- 2 - match(input$timeframe, list("Now", "In one hour"))
+                       datetime - as.difftime(timediff_vline - 1, unit = 'hours')
+                     }
+                     ) +
           geom_line() +
           geom_point() +
           # geom_ribbon(data = p_data[p_data$x >= datetime - as.difftime(10, unit = 'mins'), ],
