@@ -25,10 +25,7 @@ server <- function(input, output, session) {
       collect()
     
     # sort them so order matches lat_long_df
-    df <- df[order(match(
-      df$station_id,
-      lat_long_df$station_id
-    )),]
+    df <- df[order(match(df$station_id,lat_long_df$station_id)),]
     
     return(df)
   })
@@ -36,12 +33,14 @@ server <- function(input, output, session) {
   # get current highlighted marker and set default
   current_marker <- reactive({
     event <- input$map_marker_click
-    if (is.null(event)){
-      event <- list(id = default_station)
-    }
+    if (is.null(event)){event <- list(id = default_station)}
     return(event)
   })
 
+  # output$plot_output <- renderPlot({
+  #   plot(rnorm(10), rnorm(10))
+  # })
+  
   # When map is clicked, show a popup with city info
   observe({
     
@@ -50,7 +49,7 @@ server <- function(input, output, session) {
     isolate({
       
       # head info
-      output$marker_text <- renderText(paste0("<h3>Historical and projected for ", lat_long_df$name[lat_long_df$station_id == selected_station_id], "</h3>"))
+      output$marker_text <- renderText(paste0("<h3>", lat_long_df$name[lat_long_df$station_id == selected_station_id], "</h3>"))
       
       # plot
       output$plot_historical <- renderPlotly({
@@ -72,8 +71,7 @@ server <- function(input, output, session) {
         
         # stop here if issue building the base plot (most likely cause by
         #   lack of data)
-        validate(need(is.ggplot(p),
-                      "Data currently not available"))
+        validate(need(is.ggplot(p), "Data currently not available"))
 
         # pull out plot data
         p_data <- ggplot_build(p)$data[[1]]
@@ -111,30 +109,23 @@ server <- function(input, output, session) {
           scale_x_datetime(date_breaks = "1 hour", date_labels = "%I:%M %p") +
           scale_y_continuous(labels = scales::comma_format(accuracy = 1)) +
           scale_color_discrete(labels = c("Bikes available", "Docks available")) +
-          labs(x = NULL,
-               y = NULL,
-               color = NULL)
+          labs(x = NULL, y = NULL, color = NULL)
         
         # convert to plotly
         fig <- ggplotly(p, dynamicTicks = TRUE, tooltip = c("text")) %>%
           layout(
-            legend = list(
-              orientation = "h",
-              xanchor = "center",
-              x = 0.5,
-              y = 1.1
-            ),
+            legend = list(orientation = "h", xanchor = "center", x = 0.5, y = 1.1),
             xaxis = list(fixedrange = TRUE),
             yaxis = list(fixedrange = TRUE)
           ) %>%
           style(hoverlabel = list(bordercolor = "white")) %>%
           config(displayModeBar = FALSE)
-        
+
         # rename legend
         fig <- plotly_build(fig)
         fig$x$data[[2]]$name <- "Bikes available"
         fig$x$data[[3]]$name <- "Docks available"
-        
+
         return(fig)
       })
       
@@ -155,14 +146,25 @@ server <- function(input, output, session) {
     # set colors based on user input
     colors <- colorNumeric(palette = c("#eb6060",'#f7e463', "#7cd992", '#f2e061', "#eb5e5e"), domain = c(-1, 1))(metric)
   
-    # replace selected station with color gray
-    colors[lat_long_df$station_id == current_marker()$id] <- "#2b2b2b"
-    
     # replace NAs with red
     colors[is.na(metric)] <- "#eb6060"
-    
+  
+    # replace selected station with color gray
+    # colors[lat_long_df$station_id == current_marker()$id] <- "#2b2b2b"
+      
     return(colors)
     })
+  
+  # html for popup plot
+  # popup_plot <- reactive({
+  #   popup_html <- rep("", nrow(lat_long_df))
+  #   
+  #   # replace selected station with div
+  #   popup_html[lat_long_df$station_id == current_marker()$id] <-
+  #     '<div id="plot_output" class="shiny-plot-output" style="width: 100px; height: 100%"></div>'
+  #   
+  #   return(popup_html)
+  # })
   
   
   # build the base map
@@ -171,10 +173,13 @@ server <- function(input, output, session) {
   # edit the map
   observe({
     leafletProxy("map", session) %>%
-    addCircleMarkers(lng = lat_long_df$long, lat = lat_long_df$lat, 
-                     layerId = lat_long_df$station_id, radius = 8,
-                     stroke = FALSE, fillOpacity = 0.8, 
-                     color = circle_colors(),
-                     label = lat_long_df$name)
+      addCircleMarkers(
+        lng = lat_long_df$long, lat = lat_long_df$lat,
+        layerId = lat_long_df$station_id, group = "station_circles",
+        radius = 8, stroke = FALSE, fillOpacity = 0.8,
+        color = circle_colors(),
+        popup = lat_long_df$name, popupOptions = c('closeButton' = FALSE)
+      )
+    # popup = HTML(popup_plot()))
   })
 }

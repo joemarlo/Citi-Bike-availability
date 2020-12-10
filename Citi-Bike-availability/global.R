@@ -7,7 +7,6 @@ library(zoo)
 library(plotly)
 Sys.setenv(TZ = 'America/New_York')
 
-
 # connect to database
 conn <- pool::dbPool(
   drv = RMySQL::MySQL(), 

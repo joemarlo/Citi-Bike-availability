@@ -5,6 +5,7 @@ import numpy as np
 import os
 import xgboost as xgb
 import datetime as dt
+from sqlalchemy.types import DateTime
 
 # set directory
 os.chdir('/home/joemarlo/Dropbox/Data/Projects/Citi-Bike-availability')
@@ -20,7 +21,9 @@ old_data['datetime'] = old_data.datetime.dt.tz_localize('America/New_York')
 
 # read in latest json
 station_status = pd.read_json("https://gbfs.citibikenyc.com/gbfs/en/station_status.json")
-datetime = pd.to_datetime(station_status['last_updated'], unit='s').dt.tz_localize('UTC').dt.tz_convert('America/New_York')[0]
+datetime = pd.to_datetime(station_status['last_updated'], unit='s')\
+    .dt.tz_localize('UTC')\
+    .dt.tz_convert('America/New_York')[0]
 station_status = pd.json_normalize(station_status['data']['stations'])
 
 # only retain relavant columns
@@ -31,10 +34,14 @@ data_to_append['is_pred'] = 0
 # combine data and delete observations > 12hours old
 new_data = old_data.append(data_to_append).drop_duplicates()
 new_data['is_pred'] = 0
-new_data = new_data.loc[pd.to_datetime(new_data.datetime, utc=True).dt.tz_convert('America/New_York') >= (datetime - dt.timedelta(hours=12)),:].reset_index(drop=True)
+boolean = pd.to_datetime(new_data.datetime, utc=True).dt.tz_convert('America/New_York') >= (datetime - dt.timedelta(hours=12))
+new_data = new_data.loc[boolean,:].reset_index(drop=True)
+del boolean
 
 # split data for predictions
-data_for_preds = new_data.loc[pd.to_datetime(new_data.datetime, utc=True).dt.tz_convert('America/New_York') >= (datetime - dt.timedelta(hours=3)),:].reset_index(drop=True)
+boolean = pd.to_datetime(new_data.datetime, utc=True).dt.tz_convert('America/New_York') >= (datetime - dt.timedelta(hours=3))
+data_for_preds = new_data.loc[boolean,:].reset_index(drop=True)
+del boolean
 
 # create identifiers for month, day, hour
 data_for_preds['month'] = pd.DatetimeIndex(data_for_preds['datetime']).month
@@ -81,7 +88,8 @@ preds = pd.DataFrame(data={'station_id': data_for_preds.station_id,
                             'is_pred': 1})
 
 # append and writeout
-new_data.append(preds).to_sql(name='last_12', con=conn, if_exists='replace', index=False)
+new_data.append(preds).to_sql(name='last_12', con=conn, if_exists='replace',
+                              index=False, dtype={"datetime": DateTime()})
 
 # close connection to db
 conn.close()

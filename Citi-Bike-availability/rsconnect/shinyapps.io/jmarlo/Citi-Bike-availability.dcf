@@ -5,8 +5,8 @@ account: jmarlo
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3052465
-bundleId: 3867397
+bundleId: 3876150
 url: https://jmarlo.shinyapps.io/Citi-Bike-availability/
-when: 1605543528.9462
+when: 1605708143.31283
 asMultiple: FALSE
 asStatic: FALSE

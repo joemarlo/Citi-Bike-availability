@@ -42,6 +42,7 @@ mux = pd.MultiIndex.from_product(\
     [trip_counts.index.levels[0], trip_counts.index.levels[1], trip_counts.index.levels[2]],\
     names=['station_id', 'date', 'hour'])
 trip_counts = trip_counts.reindex(mux, fill_value=0).reset_index()
+# could also set the index to datetime and then trip_counts.asfreq('H') to make explicit NAs
 
 # create datetime column by the hour
 trip_counts['year'] = 2019

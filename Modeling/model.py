@@ -15,7 +15,7 @@ from yellowbrick.regressor import ResidualsPlot
 # set directory
 os.chdir('/home/joemarlo/Dropbox/Data/Projects/Citi-Bike-availability')
 
-# set X and y matrices
+# set X and y matrices (from feature_engineering.py)
 X = trip_counts[['zip_id', 'month', 'day', 'hour', 'weekday', 'lag_one_hour', 'lag_three_hours']]
 y = trip_counts.counts
 
