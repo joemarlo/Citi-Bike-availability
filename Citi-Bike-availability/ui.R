@@ -7,8 +7,7 @@ ui <- fluidPage(
   HTML('<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto:400,300,700,400italic">'),
   
   # set default slider skin
-  chooseSliderSkin(skin = "Flat",
-                   color = "#2e4c6e"),
+  chooseSliderSkin(skin = "Flat", color = "#2e4c6e"),
   
   titlePanel("Citi Bike availability"),
 

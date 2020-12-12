@@ -73,7 +73,8 @@ plt.gcf().set_size_inches(5, 15)
 plt.show()
 
 # save the model
-xg_reg.save_model('Modeling/xgb_trip_starts_py.model')
+# xg_reg.save_model('Modeling/xgb_trip_starts_py.model')
+xg_reg.save_model('Modeling/xgb_trip_ends_py.model')
 
 # load model
 xg_reg = xgb.Booster({'nthread': 4})

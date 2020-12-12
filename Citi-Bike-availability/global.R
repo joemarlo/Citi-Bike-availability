@@ -5,6 +5,7 @@ library(tidyverse)
 library(xgboost)
 library(zoo)
 library(plotly)
+library(viridis)
 Sys.setenv(TZ = 'America/New_York')
 
 # connect to database

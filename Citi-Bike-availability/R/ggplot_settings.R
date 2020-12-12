@@ -1,6 +1,3 @@
-require(tidyverse)
-require(viridis)
-
 # build custom theme
 theme_custom <- function() {
   theme_minimal() +

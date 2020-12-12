@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-from sqlalchemy.types import DateTime
 
 # set directory
 os.chdir('/home/joemarlo/Dropbox/Data/Projects/Citi-Bike-availability')

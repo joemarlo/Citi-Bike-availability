@@ -11,9 +11,11 @@ from sqlalchemy.types import DateTime
 os.chdir('/home/joemarlo/Dropbox/Data/Projects/Citi-Bike-availability')
 from creds_master import conn
 
-# load model
-xg_reg = xgb.Booster({'nthread': 4})
-xg_reg.load_model('Modeling/xgb_trip_starts_py.model')
+# load models
+xg_reg_start = xgb.Booster({'nthread': 4})
+xg_reg_end = xgb.Booster({'nthread': 4})
+xg_reg_start.load_model('Modeling/xgb_trip_starts_py.model')
+xg_reg_end.load_model('Modeling/xgb_trip_ends_py.model')
 
 # read in the data
 old_data = pd.read_sql("SELECT * FROM last_12 WHERE is_pred = 0", con=conn)
@@ -54,36 +56,56 @@ station_zip_mapping = pd.read_csv("Modeling/station_details.csv")[['station_id',
 data_for_preds['station_id'] = data_for_preds['station_id'].astype('int64')
 data_for_preds = data_for_preds.merge(station_zip_mapping, how='left', on='station_id')
 
-# create new columns containing counts of bikes leaving for the past one hour and past three hours
+# create new columns containing counts of bikes leaving and arriving for the past one hour and past three hours
 tmp = data_for_preds
 tmp['bikes_leaving'] = tmp[['station_id', 'num_docks_available']].groupby(by='station_id').diff()
 tmp['bikes_leaving'] = np.maximum(0, tmp['bikes_leaving'])
 tmp['bikes_arriving'] = tmp[['station_id', 'num_bikes_available']].groupby(by='station_id').diff()
 tmp['bikes_arriving'] = np.maximum(0, tmp['bikes_arriving'])
 tmp = tmp.set_index('datetime')
-lag_one_hour = tmp.last('1H').groupby('station_id').sum().reset_index()[['station_id', 'bikes_leaving', 'bikes_arriving']]
-lag_one_hour = lag_one_hour.rename(columns={"bikes_leaving": "lag_one_hour"})
-lag_three_hour = tmp.last('3H').groupby('station_id').sum().reset_index()[['station_id', 'bikes_leaving', 'bikes_arriving']]
-lag_three_hour = lag_three_hour.rename(columns={"bikes_leaving": "lag_three_hours"})
 
-# combine back into one df with just obeservations for the latest datetime
-data_for_preds = data_for_preds.loc[data_for_preds.datetime == datetime,:]\
-    .merge(lag_one_hour, how='left', on='station_id')\
-    .merge(lag_three_hour, how='left', on='station_id')
+# create lagged columns
+lag_one_hour = tmp.last('1H').groupby('station_id').sum().reset_index()[['station_id', 'bikes_leaving', 'bikes_arriving']]
+lag_one_hour_starts = lag_one_hour.rename(columns={"bikes_leaving": "lag_one_hour"})[['station_id', 'lag_one_hour']]
+lag_one_hour_ends = lag_one_hour.rename(columns={"bikes_arriving": "lag_one_hour"})[['station_id', 'lag_one_hour']]
+
+lag_three_hour = tmp.last('3H').groupby('station_id').sum().reset_index()[['station_id', 'bikes_leaving', 'bikes_arriving']]
+lag_three_hour_starts = lag_three_hour.rename(columns={"bikes_leaving": "lag_three_hours"})[['station_id', 'lag_three_hours']]
+lag_three_hour_ends = lag_three_hour.rename(columns={"bikes_arriving": "lag_three_hours"})[['station_id', 'lag_three_hours']]
+
+# combine back into one df with just observations for the latest datetime
+data_for_preds_starts = data_for_preds.loc[data_for_preds.datetime == datetime,:]\
+    .merge(lag_one_hour_starts, how='left', on='station_id')\
+    .merge(lag_three_hour_starts, how='left', on='station_id')
 
 # set X matrices
-X = data_for_preds[['zip_id', 'month', 'day', 'hour', 'weekday', 'lag_one_hour', 'lag_three_hours']]
+X = data_for_preds_starts[['zip_id', 'month', 'day', 'hour', 'weekday', 'lag_one_hour', 'lag_three_hours']]
 
 # dummy code
 X = pd.get_dummies(X, columns=['zip_id', 'month', 'day', 'hour'])
 
 # make predictions
-preds = xg_reg.predict(xgb.DMatrix(X)).round()
+preds_starts = xg_reg_start.predict(xgb.DMatrix(X)).round()
+
+## repeat for trip ends
+# combine back into one df with just observations for the latest datetime
+data_for_preds_ends = data_for_preds.loc[data_for_preds.datetime == datetime,:]\
+    .merge(lag_one_hour_ends, how='left', on='station_id')\
+    .merge(lag_three_hour_ends, how='left', on='station_id')
+
+# set X matrices
+X = data_for_preds_ends[['zip_id', 'month', 'day', 'hour', 'weekday', 'lag_one_hour', 'lag_three_hours']]
+
+# dummy code
+X = pd.get_dummies(X, columns=['zip_id', 'month', 'day', 'hour'])
+
+# make predictions
+preds_ends = xg_reg_end.predict(xgb.DMatrix(X)).round()
 
 # add preds to dataframe
-preds = pd.DataFrame(data={'station_id': data_for_preds.station_id,
-                            'num_bikes_available': data_for_preds.num_bikes_available - preds,
-                            'num_docks_available': data_for_preds.num_docks_available + preds,
+preds = pd.DataFrame(data={'station_id': data_for_preds_starts.station_id,
+                            'num_bikes_available': data_for_preds_starts.num_bikes_available - preds_starts + preds_ends,
+                            'num_docks_available': data_for_preds_starts.num_docks_available + preds_starts - preds_ends,
                             'datetime': datetime + dt.timedelta(hours=1),
                             'is_pred': 1})
 
