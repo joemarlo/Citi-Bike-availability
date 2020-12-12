@@ -1,6 +1,20 @@
 
 server <- function(input, output, session) {
   
+  # display an alert is user is mobile
+  observe({
+    if (isTRUE(input$is_mobile_device)){
+      shinyWidgets::show_alert(
+        session = session,
+        title = "Mobile! Dang!",
+        text = 'No yet optimized for mobile. Please come back on a desktop.',
+        type = 'error',
+        closeOnClickOutside = FALSE,
+        btn_labels = NA
+        )
+    }
+  })
+  
   # get current bikes available for each station
   current_bikes_available <- reactive({
     
@@ -49,7 +63,7 @@ server <- function(input, output, session) {
     isolate({
       
       # head info
-      output$marker_text <- renderText(paste0("<h3>", lat_long_df$name[lat_long_df$station_id == selected_station_id], "</h3>"))
+      output$plot_title <- renderText(paste0("<h3>", lat_long_df$name[lat_long_df$station_id == selected_station_id], "</h3>"))
       
       # plot
       output$plot_historical <- renderPlotly({

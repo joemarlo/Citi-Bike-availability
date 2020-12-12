@@ -2,10 +2,7 @@ library(shiny)
 library(shinyWidgets)
 library(leaflet)
 library(tidyverse)
-library(xgboost)
-library(zoo)
 library(plotly)
-library(viridis)
 Sys.setenv(TZ = 'America/New_York')
 
 # connect to database
@@ -49,14 +46,15 @@ scale_11 <- function(vec){
 # map ---------------------------------------------------------------------
 
 # create base map
-base_map <- leaflet() %>%
+base_map <- leaflet(options = leafletOptions(zoomControl = FALSE)) %>%
   addProviderTiles(providers$CartoDB.Positron, #Jawg.Light #Stamen.TonerLite CartoDB.Positron
                    options = providerTileOptions(noWrap = TRUE,
-                                                 minZoom = 11)) %>% 
+                                                 minZoom = 12,
+                                                 maxZoom = 15)) %>% 
   setView(lng = lat_long_df$long[lat_long_df$station_id == default_station],
           lat = lat_long_df$lat[lat_long_df$station_id == default_station],
           zoom = 14) %>% 
   setMaxBounds(lng1 = 1.0001 * min(lat_long_df$long),
                lat1 = 0.9999 * min(lat_long_df$lat),
-               lng2 = 0.9999 * max(lat_long_df$long),
+               lng2 = 0.9980 * max(lat_long_df$long),
                lat2 = 1.0001 * max(lat_long_df$lat))

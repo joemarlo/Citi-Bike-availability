@@ -29,14 +29,14 @@ nyc_zip_df <- broom::tidy(nyc_zip)
 
 # which stations are in which zip -----------------------------------------
 
-# create a df with each row as a PUMA with a nest df of the polygon xy vectors
+# create a df with each row as a zip with a nest df of the polygon xy vectors
 nested_polys <- nyc_zip_df %>% 
   select(long, lat, id) %>% 
   group_by(id) %>% 
   nest()
 
 # iterate through all the lat longs and check to see if a given lat long falls
-# inside each of the PUMA polygons
+# inside each of the zip polygons
 points_in_poly <- pmap_dfr(.l = list(lat_long_df$long, lat_long_df$lat, lat_long_df$station_id), 
                            .f = function(x, y, station_id){
                              

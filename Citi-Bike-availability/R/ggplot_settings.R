@@ -10,9 +10,3 @@ theme_custom <- function() {
 }
 
 theme_set(theme_custom())
-
-# set default continuous colors
-options(
-  ggplot2.continuous.colour = "viridis",
-  ggplot2.continuous.fill = "viridis"
-)
