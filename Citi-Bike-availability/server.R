@@ -6,7 +6,7 @@ server <- function(input, output, session) {
     if (isTRUE(input$is_mobile_device)){
       shinyWidgets::show_alert(
         session = session,
-        title = "Mobile! Dang!",
+        title = "Bummer!",
         text = 'No yet optimized for mobile. Please come back on a desktop.',
         type = 'error',
         closeOnClickOutside = FALSE,
@@ -109,10 +109,6 @@ server <- function(input, output, session) {
                      ) +
           geom_line() +
           geom_point(size = 1) +
-          # geom_ribbon(data = p_data[p_data$x >= datetime - as.difftime(10, unit = 'mins'), ],
-          #             aes(ymax = y + (1.5 * difftime(x, datetime, units = 'hours')), 
-          #                 ymin = y - (1.5 * difftime(x, datetime, units = 'hours'))),
-          #             fill = 'grey90', color = 'white', alpha = 0.8) +
           geom_line(data = p_data[p_data$x > datetime - as.difftime(1, unit = 'hours'), ],
                     linetype = "dashed") +
           geom_point(data = p_data[p_data$x > datetime - as.difftime(1, unit = 'hours'), ]) +

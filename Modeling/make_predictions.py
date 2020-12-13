@@ -102,10 +102,17 @@ X = pd.get_dummies(X, columns=['zip_id', 'month', 'day', 'hour'])
 # make predictions
 preds_ends = xg_reg_end.predict(xgb.DMatrix(X)).round()
 
+# calculate station bike and dock maximums
+station_max = station_status.num_bikes_available + station_status.num_docks_available
+
+# calculate prediction for bikes and docks available, maxing at the station max
+bikes_available = np.maximum(0, np.minimum(station_max, data_for_preds_starts.num_bikes_available - preds_starts + preds_ends))
+docks_available = station_max - bikes_available
+
 # add preds to dataframe
 preds = pd.DataFrame(data={'station_id': data_for_preds_starts.station_id,
-                            'num_bikes_available': data_for_preds_starts.num_bikes_available - preds_starts + preds_ends,
-                            'num_docks_available': data_for_preds_starts.num_docks_available + preds_starts - preds_ends,
+                            'num_bikes_available': bikes_available,
+                            'num_docks_available': docks_available,
                             'datetime': datetime + dt.timedelta(hours=1),
                             'is_pred': 1})
 

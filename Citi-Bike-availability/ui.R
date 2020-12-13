@@ -25,15 +25,16 @@ ui <- fluidPage(
                   column(6,
                          radioGroupButtons(
                            inputId = "color", label = h3("Station status"), direction = 'vertical', justified = TRUE, checkIcon = list(yes = icon("ok", lib = "glyphicon")),
-                           choices = c("Health (ratio of bikes to docks)" = 'Health', "Bikes available" = "Bikes", "Docks available" = "Docks"))),
+                           choices = c("Overall health" = 'Health', "Bikes available" = "Bikes", "Docks available" = "Docks"))),
                   column(6,
-                    sliderTextInput(inputId = "timeframe", label = h3("Timeframe"), choices = list("Now", "In one hour")))), br(), 
+                         radioGroupButtons(
+                           inputId = "timeframe", label = h3("Timeframe"), direction = 'vertical', justified = TRUE, checkIcon = list(yes = icon("ok", lib = "glyphicon")),
+                           choices = c("Now", "In one hour")))), br(),
+                    # sliderTextInput(inputId = "timeframe", label = h3("Timeframe"), choices = list("Now", "In one hour")))), br(),
                 htmlOutput("plot_title"),
-                plotlyOutput('plot_historical', height = "410px"),
+                plotlyOutput('plot_historical', height = "380px"),
            ),
   absolutePanel(id = 'legend', class = 'panel panel-default', fixed = FALSE, width = '75px', height = 'auto',
                 draggable = FALSE, top = 75, left = '25', right = 'auto', bottom = 'auto',
-                plotOutput("plot_legend", height = "150px")),
-  HTML('<br><p style="font-size: 0.8em; font-style: italic">This tool is still in draft. It does not currently account for station dock maximum.')
-  
+                plotOutput("plot_legend", height = "150px"))
 )
