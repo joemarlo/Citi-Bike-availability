@@ -10,7 +10,5 @@ See blog post: [marlo.works/citi-bike-availability](https://www.marlo.works/post
 
 ## To do
 
-- fix colors
 - Integrate weather into prediction with [openweathermap](https://openweathermap.org/)
-- Integrate station dock maximum into model
-- Rebuild with RNN
+- Rebuild with ARIMA and RNN
