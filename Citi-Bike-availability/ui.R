@@ -15,6 +15,9 @@ ui <- fluidPage(
   # page title
   titlePanel("Citi Bike availability"),
   
+  # render the map
+  leafletOutput("map", width = "100%", height = "700px"),
+  
   # render UI from server - UI determined by if user is mobile or not
   uiOutput("UI")
 )

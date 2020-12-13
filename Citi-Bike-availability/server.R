@@ -3,26 +3,22 @@ server <- function(input, output, session) {
 
   output$UI <- renderUI({
     
-    # if user is on mobile, then display fluidrow stacked UI, else display normal UI
+    # if user is on mobile, then display stacked UI, else display overlaid UI
     if (isTRUE(input$is_mobile_device)){
-    
+
       tagList(
-        fluidRow(
-          column(6, leafletOutput("map", width = "100%", height = "700px")),
-          column(6, 
-            radioGroupButtons(inputId = "color", label = h3("Station status"), direction = 'vertical', justified = TRUE, 
+            radioGroupButtons(inputId = "color", label = h3("Station status"), direction = 'vertical', justified = TRUE,
                               checkIcon = list(yes = icon("ok", lib = "glyphicon")), choices = c("Overall health" = 'Health', "Bikes available" = "Bikes", "Docks available" = "Docks")),
-            radioGroupButtons(inputId = "timeframe", label = h3("Timeframe"), direction = 'vertical', justified = TRUE, 
+            radioGroupButtons(inputId = "timeframe", label = h3("Timeframe"), direction = 'vertical', justified = TRUE,
                               checkIcon = list(yes = icon("ok", lib = "glyphicon")), choices = c("Now", "In one hour")),
-            htmlOutput("plot_title"), plotlyOutput('plot_historical', height = "380px"))),
+            htmlOutput("plot_title"), plotlyOutput('plot_historical', height = "380px"),
        absolutePanel(id = 'legend', class = 'panel panel-default', fixed = FALSE, width = '75px', height = 'auto',
                      draggable = FALSE, top = 75, left = '25', right = 'auto', bottom = 'auto',
                      plotOutput("plot_legend", height = "150px")))
-      
+
     } else {
 
       tagList(
-        leafletOutput("map", width = "100%", height = "700px"),
         absolutePanel(id = "controls", class = "panel panel-default", fixed = FALSE, width = "40%", height = "auto",
                       draggable = FALSE, top = 80, left = 'auto', right = 50, bottom = "auto",
                       fluidRow(
@@ -35,8 +31,8 @@ server <- function(input, output, session) {
                       htmlOutput("plot_title"), plotlyOutput('plot_historical', height = "380px"),
         ),
         absolutePanel(id = 'legend', class = 'panel panel-default', fixed = FALSE, width = '75px', height = 'auto',
-                      draggable = FALSE, top = 75, left = '25', right = 'auto', bottom = 'auto', plotOutput("plot_legend", height = "150px"))
-      )}
+                      draggable = FALSE, top = 75, left = '25', right = 'auto', bottom = 'auto', plotOutput("plot_legend", height = "150px")))
+      }
   })
   
   # get current bikes available for each station
@@ -75,7 +71,7 @@ server <- function(input, output, session) {
     return(event)
   })
 
-  # When map is clicked, show a popup with city info
+  # when station is selected on map, show a popup and render the plot 
   observe({
     
     selected_station_id <- as.character(current_marker()$id)
@@ -159,7 +155,7 @@ server <- function(input, output, session) {
     })
   })
   
-  # function to determine circle colors and render color legend
+  # determine circle colors and render color legend based on user input
   circle_colors <- reactive({
     
     input_color <- input$color
@@ -217,7 +213,7 @@ server <- function(input, output, session) {
     
     return(colors)
     })
-
+  
   # build the base map
   output$map <- renderLeaflet(base_map)
   
