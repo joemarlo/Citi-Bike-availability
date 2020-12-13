@@ -1,18 +1,42 @@
 
 server <- function(input, output, session) {
-  
-  # display an alert is user is mobile
-  observe({
+
+  output$UI <- renderUI({
+    
+    # if user is on mobile, then display fluidrow stacked UI, else display normal UI
     if (isTRUE(input$is_mobile_device)){
-      shinyWidgets::show_alert(
-        session = session,
-        title = "Bummer!",
-        text = 'No yet optimized for mobile. Please come back on a desktop.',
-        type = 'error',
-        closeOnClickOutside = FALSE,
-        btn_labels = NA
-        )
-    }
+    
+      tagList(
+        fluidRow(
+          column(6, leafletOutput("map", width = "100%", height = "700px")),
+          column(6, 
+            radioGroupButtons(inputId = "color", label = h3("Station status"), direction = 'vertical', justified = TRUE, 
+                              checkIcon = list(yes = icon("ok", lib = "glyphicon")), choices = c("Overall health" = 'Health', "Bikes available" = "Bikes", "Docks available" = "Docks")),
+            radioGroupButtons(inputId = "timeframe", label = h3("Timeframe"), direction = 'vertical', justified = TRUE, 
+                              checkIcon = list(yes = icon("ok", lib = "glyphicon")), choices = c("Now", "In one hour")),
+            htmlOutput("plot_title"), plotlyOutput('plot_historical', height = "380px"))),
+       absolutePanel(id = 'legend', class = 'panel panel-default', fixed = FALSE, width = '75px', height = 'auto',
+                     draggable = FALSE, top = 75, left = '25', right = 'auto', bottom = 'auto',
+                     plotOutput("plot_legend", height = "150px")))
+      
+    } else {
+
+      tagList(
+        leafletOutput("map", width = "100%", height = "700px"),
+        absolutePanel(id = "controls", class = "panel panel-default", fixed = FALSE, width = "40%", height = "auto",
+                      draggable = FALSE, top = 80, left = 'auto', right = 50, bottom = "auto",
+                      fluidRow(
+                        column(6,
+                          radioGroupButtons(inputId = "color", label = h3("Station status"), direction = 'vertical', justified = TRUE, 
+                                            checkIcon = list(yes = icon("ok", lib = "glyphicon")), choices = c("Overall health" = 'Health', "Bikes available" = "Bikes", "Docks available" = "Docks"))),
+                        column(6,
+                          radioGroupButtons(inputId = "timeframe", label = h3("Timeframe"), direction = 'vertical', justified = TRUE, 
+                                            checkIcon = list(yes = icon("ok", lib = "glyphicon")), choices = c("Now", "In one hour")))), br(),
+                      htmlOutput("plot_title"), plotlyOutput('plot_historical', height = "380px"),
+        ),
+        absolutePanel(id = 'legend', class = 'panel panel-default', fixed = FALSE, width = '75px', height = 'auto',
+                      draggable = FALSE, top = 75, left = '25', right = 'auto', bottom = 'auto', plotOutput("plot_legend", height = "150px"))
+      )}
   })
   
   # get current bikes available for each station
@@ -71,6 +95,9 @@ server <- function(input, output, session) {
           collect() %>% 
           mutate(datetime = lubridate::as_datetime(datetime, tz = 'America/New_York'))
         
+        # stop here if issue with the data - most likely caused by mySQL
+        validate(need(is.data.frame(station_data), "Data currently not available"))
+        
         # build plot data first so we can seperate line types later
         p <- station_data %>%
           rename('Bikes available' = num_bikes_available,
@@ -79,10 +106,6 @@ server <- function(input, output, session) {
           ggplot(aes(x = datetime, y = value, group = name, color = name)) +
           geom_line()
         
-        # stop here if issue building the base plot (most likely cause by
-        #   lack of data)
-        validate(need(is.ggplot(p), "Data currently not available"))
-
         # pull out plot data
         p_data <- ggplot_build(p)$data[[1]]
 
@@ -104,9 +127,7 @@ server <- function(input, output, session) {
                      # }
                      xintercept = {
                        timediff_vline <- 2 - match(input$timeframe, list("Now", "In one hour"))
-                       datetime - as.difftime(timediff_vline - 1, unit = 'hours')
-                     }
-                     ) +
+                       datetime - as.difftime(timediff_vline - 1, unit = 'hours')}) +
           geom_line() +
           geom_point(size = 1) +
           geom_line(data = p_data[p_data$x > datetime - as.difftime(1, unit = 'hours'), ],
@@ -141,7 +162,11 @@ server <- function(input, output, session) {
   # function to determine circle colors and render color legend
   circle_colors <- reactive({
     
-    if (input$color == "Health"){
+    input_color <- input$color
+    if (is.null(input_color)){input_color <- list(color = "Health")}
+    
+    
+    if (input_color == "Health"){
       # return diverging viridis colors
       colors_input <- c("#440154FF", "#39568CFF", "#1F968BFF", "#95D840FF", "#1F968BFF", "#39568CFF", "#440154FF")
       pal <- colorNumeric(palette = colors_input, domain = c(0, 1))      
@@ -155,7 +180,7 @@ server <- function(input, output, session) {
         annotate("text", label = "No bikes", x = 1, y = 7, color = 'white', fontface = 'bold') +
         theme_void()
       
-    } else if (input$color == "Bikes"){
+    } else if (input_color == "Bikes"){
       # return viridis colors bucketed by 0, 1, 2, 3+ bikes available
       colors_input <- c("#440154FF", "#39568CFF", "#1F968BFF", "#95D840FF")
       pal <- colorNumeric(palette = colors_input, domain = c(0, 3), na.color = "#95D840FF")      
@@ -170,7 +195,7 @@ server <- function(input, output, session) {
         annotate("text", label = "3+", x = 1, y = 4, color = 'white', fontface = 'bold') +
         theme_void()
       
-    } else if (input$color == 'Docks'){
+    } else if (input_color == 'Docks'){
       # return viridis colors bucketed by 0, 1, 2, 3+ docks available
       colors_input <- c("#440154FF", "#39568CFF", "#1F968BFF", "#95D840FF")
       pal <- colorNumeric(palette = colors_input, domain = c(0, 3), na.color = "#95D840FF")      
