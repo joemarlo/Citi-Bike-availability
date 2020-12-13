@@ -35,7 +35,7 @@ server <- function(input, output, session) {
       tbl("last_12") %>%
       filter(datetime == datetime_str) %>% 
       select(station_id, num_bikes_available, num_docks_available) %>%
-      mutate(health = pmax(-3, pmin(3, log(num_bikes_available / num_docks_available)))) %>% 
+      mutate(health = num_bikes_available / (num_bikes_available + num_docks_available)) %>% 
       collect()
     
     # sort them so order matches lat_long_df
@@ -51,10 +51,6 @@ server <- function(input, output, session) {
     return(event)
   })
 
-  # output$plot_output <- renderPlot({
-  #   plot(rnorm(10), rnorm(10))
-  # })
-  
   # When map is clicked, show a popup with city info
   observe({
     
@@ -112,7 +108,7 @@ server <- function(input, output, session) {
                      }
                      ) +
           geom_line() +
-          geom_point() +
+          geom_point(size = 1) +
           # geom_ribbon(data = p_data[p_data$x >= datetime - as.difftime(10, unit = 'mins'), ],
           #             aes(ymax = y + (1.5 * difftime(x, datetime, units = 'hours')), 
           #                 ymin = y - (1.5 * difftime(x, datetime, units = 'hours'))),
@@ -122,7 +118,7 @@ server <- function(input, output, session) {
           geom_point(data = p_data[p_data$x > datetime - as.difftime(1, unit = 'hours'), ]) +
           scale_x_datetime(date_breaks = "1 hour", date_labels = "%I:%M %p") +
           scale_y_continuous(labels = scales::comma_format(accuracy = 1)) +
-          scale_color_discrete(labels = c("Bikes available", "Docks available")) +
+          scale_color_manual(labels = c("Bikes available", "Docks available"), values = c('#c51f5d', '#243447')) +
           labs(x = NULL, y = NULL, color = NULL)
         
         # convert to plotly
@@ -146,41 +142,61 @@ server <- function(input, output, session) {
     })
   })
   
-  # function to determine circle colors and highlight color of selected marker
+  # function to determine circle colors and render color legend
   circle_colors <- reactive({
     
-    # map user input to data column
-    metric <- switch(
-      input$color,
-      "Health (ratio of bikes to docks)" = scale_11(current_bikes_available()$health), 
-      "Bikes available" = scale_11(current_bikes_available()$num_bikes_available), 
-      "Docks available" = scale_11(current_bikes_available()$num_docks_available)
-    )
-
-    # set colors based on user input
-    colors <- colorNumeric(palette = c("#eb6060",'#f7e463', "#7cd992", '#f2e061', "#eb5e5e"), domain = c(-1, 1))(metric)
-  
-    # replace NAs with red
-    colors[is.na(metric)] <- "#eb6060"
-  
-    # replace selected station with color gray
-    # colors[lat_long_df$station_id == current_marker()$id] <- "#2b2b2b"
+    if (input$color == "Health"){
+      # return diverging viridis colors
+      colors_input <- c("#440154FF", "#39568CFF", "#1F968BFF", "#95D840FF", "#1F968BFF", "#39568CFF", "#440154FF")
+      pal <- colorNumeric(palette = colors_input, domain = c(0, 1))      
+      colors <- pal(current_bikes_available()$health)
       
+      # plot legend
+      p <- ggplot(tibble(x = 1, y = 1:7), aes(x = x, y = y)) + 
+        geom_tile(fill = colors_input) +
+        annotate("text", label = "No docks", x = 1, y = 1, color = 'white', fontface = 'bold') +
+        annotate("text", label = "Balanced", x = 1, y = 4, color = 'white', fontface = 'bold') +
+        annotate("text", label = "No bikes", x = 1, y = 7, color = 'white', fontface = 'bold') +
+        theme_void()
+      
+    } else if (input$color == "Bikes"){
+      # return viridis colors bucketed by 0, 1, 2, 3+ bikes available
+      colors_input <- c("#440154FF", "#39568CFF", "#1F968BFF", "#95D840FF")
+      pal <- colorNumeric(palette = colors_input, domain = c(0, 3), na.color = "#95D840FF")      
+      colors <- pal(current_bikes_available()$num_bikes_available)
+
+      # plot legend
+      p <- ggplot(tibble(x = 1, y = 1:4), aes(x = x, y = y)) + 
+        geom_tile(fill = colors_input) +
+        annotate("text", label = "No bikes", x = 1, y = 1, color = 'white', fontface = 'bold') +
+        annotate("text", label = "1 bike", x = 1, y = 2, color = 'white', fontface = 'bold') +
+        annotate("text", label = "2", x = 1, y = 3, color = 'white', fontface = 'bold') +
+        annotate("text", label = "3+", x = 1, y = 4, color = 'white', fontface = 'bold') +
+        theme_void()
+      
+    } else if (input$color == 'Docks'){
+      # return viridis colors bucketed by 0, 1, 2, 3+ docks available
+      colors_input <- c("#440154FF", "#39568CFF", "#1F968BFF", "#95D840FF")
+      pal <- colorNumeric(palette = colors_input, domain = c(0, 3), na.color = "#95D840FF")      
+      colors <- pal(current_bikes_available()$num_docks_available)
+      
+      # plot legend
+      p <- ggplot(tibble(x = 1, y = 1:4), aes(x = x, y = y)) + 
+        geom_tile(fill = colors_input) +
+        annotate("text", label = "No docks", x = 1, y = 1, color = 'white', fontface = 'bold') +
+        annotate("text", label = "1 dock", x = 1, y = 2, color = 'white', fontface = 'bold') +
+        annotate("text", label = "2", x = 1, y = 3, color = 'white', fontface = 'bold') +
+        annotate("text", label = "3+", x = 1, y = 4, color = 'white', fontface = 'bold') +
+        theme_void()
+      
+    } else stop("Invalid selection for station status")
+    
+    # plot legend
+    output$plot_legend <- renderPlot(p)
+    
     return(colors)
     })
-  
-  # html for popup plot
-  # popup_plot <- reactive({
-  #   popup_html <- rep("", nrow(lat_long_df))
-  #   
-  #   # replace selected station with div
-  #   popup_html[lat_long_df$station_id == current_marker()$id] <-
-  #     '<div id="plot_output" class="shiny-plot-output" style="width: 100px; height: 100%"></div>'
-  #   
-  #   return(popup_html)
-  # })
-  
-  
+
   # build the base map
   output$map <- renderLeaflet(base_map)
   
@@ -194,6 +210,5 @@ server <- function(input, output, session) {
         color = circle_colors(),
         popup = lat_long_df$name, popupOptions = c('closeButton' = FALSE)
       )
-    # popup = HTML(popup_plot()))
   })
 }

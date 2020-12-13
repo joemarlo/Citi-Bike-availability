@@ -33,10 +33,10 @@ data_to_append = station_status[['station_id', 'num_bikes_available', 'num_docks
 data_to_append['datetime'] = datetime
 data_to_append['is_pred'] = 0
 
-# combine data and delete observations > 12hours old
+# combine data and delete observations > 24 hours old
 new_data = old_data.append(data_to_append).drop_duplicates()
 new_data['is_pred'] = 0
-boolean = pd.to_datetime(new_data.datetime, utc=True).dt.tz_convert('America/New_York') >= (datetime - dt.timedelta(hours=12))
+boolean = pd.to_datetime(new_data.datetime, utc=True).dt.tz_convert('America/New_York') >= (datetime - dt.timedelta(hours=24))
 new_data = new_data.loc[boolean,:].reset_index(drop=True)
 del boolean
 
