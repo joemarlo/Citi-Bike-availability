@@ -19,5 +19,7 @@ ui <- fluidPage(
   leafletOutput("map", width = "100%", height = "700px"),
   
   # render UI from server - UI determined by if user is mobile or not
-  uiOutput("UI")
+  uiOutput("UI"),
+  
+  HTML('<br><p style="font-size: 0.8em; font-style: italic">Data from Citi Bike. Updated every 15 minutes. Does not include electric bikes.</p>')
 )

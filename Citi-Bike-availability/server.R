@@ -59,7 +59,7 @@ server <- function(input, output, session) {
       collect()
     
     # sort them so order matches lat_long_df
-    df <- df[order(match(df$station_id,lat_long_df$station_id)),]
+    df <- df[match(lat_long_df$station_id, df$station_id),]
     
     return(df)
   })
@@ -165,7 +165,7 @@ server <- function(input, output, session) {
     if (input_color == "Health"){
       # return diverging viridis colors
       colors_input <- c("#440154FF", "#39568CFF", "#1F968BFF", "#95D840FF", "#1F968BFF", "#39568CFF", "#440154FF")
-      pal <- colorNumeric(palette = colors_input, domain = c(0, 1))      
+      pal <- colorNumeric(palette = colors_input, domain = c(0, 1), na.color = "#636363")      
       colors <- pal(current_bikes_available()$health)
       
       # plot legend
