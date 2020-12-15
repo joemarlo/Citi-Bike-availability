@@ -3,6 +3,7 @@ library(shinyWidgets)
 library(leaflet)
 library(tidyverse)
 library(plotly)
+library(pool)
 Sys.setenv(TZ = 'America/New_York')
 
 # connect to Azure database as read-only
