@@ -16,9 +16,7 @@ conn <- pool::dbPool(
 )
 
 # disconnect from server when shiny stops
-onStop(function() {
-  pool::poolClose(conn)
-})
+onStop(function() pool::poolClose(conn))
 
 # read lat long table
 lat_long_df <- conn %>% 

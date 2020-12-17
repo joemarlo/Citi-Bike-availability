@@ -219,8 +219,7 @@ server <- function(input, output, session) {
       addCircleMarkers(
         lng = lat_long_df$long, lat = lat_long_df$lat,
         layerId = lat_long_df$station_id, group = "station_circles",
-        radius = 8, stroke = FALSE, fillOpacity = 0.8,
-        color = circle_colors(),
+        radius = 8, stroke = FALSE, fillOpacity = 0.8, color = circle_colors(),
         popup = lat_long_df$name, popupOptions = c('closeButton' = FALSE)
       )
   })
