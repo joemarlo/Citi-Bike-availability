@@ -9,4 +9,4 @@ Real-time prediction of Citi Bike availability for each station. See blog post: 
 ## To do
 
 - Integrate weather into prediction with [openweathermap](https://openweathermap.org/)
-- Rebuild with ARIMA and RNN
+- Rebuild with prophet model
